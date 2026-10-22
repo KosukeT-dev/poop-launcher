@@ -117,7 +117,7 @@
     }
 
     h1 .a {
-      font-size: 2.2em;
+      font-size: 2.5em;
       font-weight: 900;
       color: #ffd23f;
       -webkit-text-stroke: .2em #5b3a1a;
@@ -212,20 +212,31 @@
     const TT = 560, CX = 300, CY = 880;
     let eng, bullets = [], targets = [], parts = [], queue = [], ammo = 0, stage = 1, score = 0, state = 'title', aim = null, last = 0, kick = 0, ended = 0, curOv = null;
     const clouds = Array.from({ length: 7 }, (_, i) => ({ x: i * 150 - 200, y: 60 + Math.random() * 500, s: .6 + Math.random() * .9, v: .1 + Math.random() * .2 }));
+    function layout(st) {
+      const P = [];
+      const pyr = (cx, rows) => { for (let r = 0; r < rows; r++) { const n = rows - r; for (let i = 0; i < n; i++)P.push([cx - (n - 1) * 29 + i * 58, r]) } };
+      const wall = (cx, cols, rows) => { for (let r = 0; r < rows; r++) { const n = r % 2 ? cols - 1 : cols; for (let i = 0; i < n; i++)P.push([cx - (cols - 1) * 29 + i * 58 + (r % 2 ? 29 : 0), r]) } };
+      const tower = (cx, rows) => { for (let r = 0; r < rows; r++)P.push([cx, r]) };
+      if (st <= 3) { pyr(CX, 2 + st); return P }
+      const k = (st - 4) % 4, lv = Math.min(Math.floor((st - 4) / 4), 3);
+      if (k == 0) pyr(CX, Math.min(6 + lv, 8));
+      else if (k == 1) { const n = 3 + Math.min(lv, 1); pyr(CX - 130, n); pyr(CX + 130, n); if (lv >= 2) tower(CX, 5) }
+      else if (k == 2) wall(CX, 5 + Math.min(lv, 2), 4 + Math.min(lv, 2));
+      else { tower(CX - 160, 5 + lv); tower(CX + 160, 5 + lv); pyr(CX, 3 + Math.min(lv, 1)) }
+      return P
+    }
     function setup() {
       eng = Engine.create({ enableSleeping: true }); eng.gravity.scale = .001; eng.positionIterations = 10;
       bullets = []; targets = []; parts = []; fly = []; pops = []; combo = 0;
-      Composite.add(eng.world, Bodies.rectangle(CX, TT + 12, 480, 24, { isStatic: true, friction: 1, collisionFilter: { category: 4 } }));
-      const rows = Math.min(2 + stage, 6), cnt = rows * (rows + 1) / 2;
-      for (let r = 0; r < rows; r++) {
-        const n = rows - r; for (let i = 0; i < n; i++) {
-          const b = Bodies.rectangle(CX - (n - 1) * 29 + i * 58, TT - 23 - r * 45, 56, 44, { chamfer: { radius: 16 }, density: .002, friction: .8, restitution: .05, label: 'target', collisionFilter: { category: 2 } });
-          Composite.add(eng.world, b); targets.push(b)
-        }
+      Composite.add(eng.world, Bodies.rectangle(CX, TT + 12, 520, 24, { isStatic: true, friction: 1, collisionFilter: { category: 4 } }));
+      const LY = layout(stage), cnt = LY.length;
+      for (const [x, r] of LY) {
+        const b = Bodies.rectangle(x, TT - 23 - r * 45, 56, 44, { chamfer: { radius: 16 }, density: .002, friction: .8, restitution: .05, label: 'target', collisionFilter: { category: 2 } });
+        Composite.add(eng.world, b); targets.push(b)
       }
       for (let i = 0; i < 120; i++)Engine.update(eng, 1000 / 60);
       targets.forEach(b => { Body.setVelocity(b, { x: 0, y: 0 }); Body.setAngularVelocity(b, 0); Matter.Sleeping.set(b, true) });
-      ammo = Math.max(5, Math.ceil(cnt * .85) + 1); sh = stage >= 3 ? { x: 300, d: 1, w: Math.min(100 + stage * 12, 200), v: Math.min(.9 + stage * .2, 2.6), y: 690 } : null; queue = Array.from({ length: ammo }, () => false);
+      ammo = cnt <= 15 ? Math.max(5, Math.ceil(cnt * .85) + 1) : Math.ceil(cnt * .6) + 4; sh = stage >= 3 ? { x: 300, d: 1, w: Math.min(100 + stage * 12, 200), v: Math.min(.9 + stage * .2, 2.6), y: 690 } : null; queue = Array.from({ length: ammo }, () => false);
       for (let k = 0, n = Math.min(2, ammo - 1); k < n;) { const i = 1 + Math.floor(Math.random() * (ammo - 1)); if (!queue[i]) { queue[i] = true; k++ } }
       state = 'play'; ended = 0; last = performance.now(); hide(); hud();
     }
@@ -331,9 +342,9 @@
       if (state != 'title') {
         /* table */
         g.fillStyle = '#a0642a'; g.strokeStyle = '#4a2a0e'; g.lineWidth = 5;
-        for (const x of [85, 485]) { g.beginPath(); g.roundRect(x - 14, 584, 28, 380, 6); g.fill(); g.stroke() }
-        g.beginPath(); g.roundRect(60, TT, 480, 24, 8); g.fill(); g.stroke();
-        g.fillStyle = '#c98543'; g.fillRect(66, TT + 3, 468, 6);
+        for (const x of [65, 535]) { g.beginPath(); g.roundRect(x - 14, 584, 28, 380, 6); g.fill(); g.stroke() }
+        g.beginPath(); g.roundRect(40, TT, 520, 24, 8); g.fill(); g.stroke();
+        g.fillStyle = '#c98543'; g.fillRect(46, TT + 3, 508, 6);
         for (const t of targets) { const p = ip(t); dp(p.x, p.y + 3, 25, false, p.a) }
       }
       if (sh) { g.fillStyle = '#c98543'; g.strokeStyle = '#4a2a0e'; g.lineWidth = 5; g.beginPath(); g.roundRect(sh.x - sh.w / 2, sh.y - 16, sh.w, 32, 8); g.fill(); g.stroke(); g.fillStyle = '#e8a864'; g.fillRect(sh.x - sh.w / 2 + 6, sh.y - 10, sh.w - 12, 6) }
@@ -369,7 +380,7 @@
       const m = { go: () => { au(); stage = 1; score = 0; shotN = 0; setup() }, nx: () => { stage++; setup() }, rt: () => { stage = 1; score = 0; shotN = 0; setup() } };
       for (const k in m) { const e = document.getElementById(k); if (e) e.onclick = m[k] }
     }
-    function setL(l) { L = l; document.documentElement.lang = l; document.title = l == 'ja' ? '運呼バズーカ' : 'POOP launcher'; bj.className = l == 'ja' ? 'on' : ''; be.className = l == 'en' ? 'on' : ''; if (curOv) { ov.innerHTML = curOv(); rebind() } hud() }
+    function setL(l) { L = l; document.documentElement.lang = l; document.title = l == 'ja' ? '運呼バズーカ' : 'POOP LAUNCHER'; bj.className = l == 'ja' ? 'on' : ''; be.className = l == 'en' ? 'on' : ''; if (curOv) { ov.innerHTML = curOv(); rebind() } hud() }
     bj.onclick = () => setL('ja'); be.onclick = () => setL('en');
     /* input */
     const wp = e => { const q = cv.getBoundingClientRect(); return { x: (e.clientX - q.left) / S, y: (e.clientY - q.top) / S } };
